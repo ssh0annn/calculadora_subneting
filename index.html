@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Calculadora de Redes Avanzada</title>
+    <style>
+        /* Variables de color */
+        :root { 
+            --primary: #4f46e5; 
+            --bg: #f1f5f9; 
+            --card-bg: #ffffff;
+            --text-color: #1e293b;
+            --pre-bg: #1e293b;
+        }
+
+        /* Estilos para modo oscuro */
+        body.dark-mode {
+            --primary: #818cf8;
+            --bg: #0f172a;
+            --card-bg: #1e293b;
+            --text-color: #f8fafc;
+            --pre-bg: #0f172a;
+        }
+
+        body { font-family: sans-serif; background: var(--bg); color: var(--text-color); padding: 20px; transition: 0.3s; }
+        .card { background: var(--card-bg); padding: 20px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); margin-bottom: 20px; max-width: 600px; margin-left: auto; margin-right: auto; }
+        input { width: 100%; padding: 8px; margin: 8px 0; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
+        button { background: var(--primary); color: white; border: none; padding: 10px; width: 100%; border-radius: 4px; cursor: pointer; }
+        pre { background: var(--pre-bg); color: #f8fafc; padding: 15px; border-radius: 8px; overflow-x: auto; }
+        
+        /* Botón de tema */
+        #theme-toggle {
+            position: fixed; top: 20px; right: 20px;
+            padding: 10px 20px; cursor: pointer;
+            background: var(--primary); color: white; border: none; border-radius: 20px;
+        }
+    </style>
+</head>
+<body>
+
+<button id="theme-toggle" onclick="toggleTheme()">Cambiar Modo</button>
+
+<div class="card">
+    <h2>1. Analizar Red</h2>
+    <input type="text" id="ip" placeholder="IP (ej. 192.168.1.0)">
+    <input type="number" id="mask" placeholder="Máscara (ej. 24)">
+    <button onclick="analizar()">Analizar</button>
+    <pre id="res1">Esperando datos...</pre>
+</div>
+
+<div class="card">
+    <h2>2. Subnetting (Fijo)</h2>
+    <input type="number" id="subs" placeholder="Cantidad de subredes deseadas">
+    <button onclick="subnetFijo()">Calcular Fijo</button>
+    <pre id="res2">...</pre>
+</div>
+
+<div class="card">
+    <h2>3. VLSM</h2>
+    <input type="text" id="vlsmList" placeholder="Hosts por subred (ej: 50, 20, 2)">
+    <button onclick="calcularVLSM()">Calcular VLSM</button>
+    <pre id="res3">...</pre>
+</div>
+
+<script>
+    // Función para alternar modo
+    function toggleTheme() {
+        document.body.classList.toggle('dark-mode');
+    }
+
+    function analizar() {
+        const mask = parseInt(document.getElementById('mask').value);
+        if (isNaN(mask)) return;
+        const hosts = Math.pow(2, 32 - mask) - 2;
+        document.getElementById('res1').innerText = `Red: /${mask}\nTotal IPs: ${Math.pow(2, 32-mask)}\nHosts utilizables: ${hosts > 0 ? hosts : 0}`;
+    }
+
+    function subnetFijo() {
+        const subs = parseInt(document.getElementById('subs').value);
+        const mask = parseInt(document.getElementById('mask').value);
+        if (isNaN(subs) || isNaN(mask)) return;
+        const bits = Math.ceil(Math.log2(subs));
+        document.getElementById('res2').innerText = `Bits a tomar: ${bits}\nNueva Máscara: /${mask + bits}`;
+    }
+
+    function calcularVLSM() {
+        const input = document.getElementById('vlsmList').value;
+        const requirements = input.split(',').map(n => parseInt(n.trim())).filter(n => !isNaN(n)).sort((a,b) => b-a);
+        let output = "Subredes requeridas (ordenadas):\n";
+        requirements.forEach((req) => {
+            let n = 0;
+            while(Math.pow(2, n) - 2 < req) n++;
+            output += `Req ${req} hosts: /${32 - n}\n`;
+        });
+        document.getElementById('res3').innerText = output || "Introduce valores válidos";
+    }
+</script>
+</body>
+</html>
