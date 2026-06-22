@@ -2,80 +2,102 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>Calculadora de Redes - Estilo Clásico</title>
+    <title>Calculadora de Redes - Pro</title>
     <style>
-        :root {
-            --bg: #d1d5db; --body-bg: #9ca3af; --lcd: #374151; --btn: #4b5563;
-        }
+        :root { --bg: #d1d5db; --body-bg: #9ca3af; --lcd: #374151; --btn: #4b5563; }
         body.dark-mode { --bg: #1f2937; --body-bg: #111827; --lcd: #000; --btn: #374151; }
         
-        body { font-family: 'Courier New', Courier, monospace; background: var(--body-bg); display: flex; justify-content: center; padding: 20px; transition: 0.3s; }
+        body { font-family: 'Courier New', Courier, monospace; background: var(--body-bg); display: flex; justify-content: center; padding: 20px; transition: 0.3s; color: white; }
         
         .calculator {
             background: var(--bg); padding: 20px; border-radius: 20px;
-            box-shadow: 10px 10px 20px rgba(0,0,0,0.3), inset -5px -5px 10px rgba(255,255,255,0.2);
-            width: 350px; border: 8px solid #6b7280;
+            box-shadow: 10px 10px 20px rgba(0,0,0,0.3);
+            width: 380px; border: 8px solid #6b7280;
         }
 
         .screen {
             background: var(--lcd); color: #10b981; padding: 15px; border-radius: 5px;
-            font-size: 14px; height: 100px; overflow-y: auto; margin-bottom: 20px;
-            border: 4px inset #9ca3af; text-align: left;
+            font-size: 13px; height: 250px; overflow-y: auto; margin-bottom: 20px;
+            border: 4px inset #9ca3af; text-align: left; white-space: pre-wrap;
         }
 
-        input { width: 100%; padding: 10px; margin: 5px 0; border: 1px solid #666; border-radius: 0; }
+        input { width: 100%; padding: 10px; margin: 5px 0; border: 1px solid #666; box-sizing: border-box; }
         button { 
             background: var(--btn); color: white; border: none; padding: 12px; margin: 5px 0;
             width: 100%; cursor: pointer; font-weight: bold; border-radius: 5px;
-            box-shadow: 2px 2px 0px #333;
         }
-        button:active { transform: translateY(2px); box-shadow: none; }
+        button:hover { filter: brightness(1.2); }
         .theme-btn { background: #ef4444; margin-bottom: 10px; }
     </style>
 </head>
 <body>
 
 <div class="calculator">
-    <button class="theme-btn" onclick="toggleTheme()">☀️ / 🌑</button>
+    <button class="theme-btn" onclick="toggleTheme()">Cambiar Modo Color</button>
     
-    <div id="display" class="screen">Calculadora de Redes V1.0</div>
+    <div id="display" class="screen">Calculadora de Redes V2.0\nIngresa IP y máscara para comenzar.</div>
 
-    <input type="text" id="ip" placeholder="IP">
+    <input type="text" id="ip" placeholder="IP Base (ej. 192.168.1.0)">
     <input type="number" id="mask" placeholder="Máscara (ej. 24)">
     <button onclick="analizar()">Analizar Red</button>
     
-    <input type="number" id="subs" placeholder="Subredes deseadas">
+    <input type="number" id="subs" placeholder="Subredes (Subnetting Fijo)">
     <button onclick="subnetFijo()">Calcular Fijo</button>
     
-    <input type="text" id="vlsmList" placeholder="VLSM (ej: 50, 20, 2)">
-    <button onclick="calcularVLSM()">Calcular VLSM</button>
+    <input type="text" id="vlsmList" placeholder="Hosts por red (ej: 50, 20, 2)">
+    <button onclick="calcularVLSM()">Calcular VLSM (con rangos)</button>
 </div>
 
 <script>
     function toggleTheme() { document.body.classList.toggle('dark-mode'); }
-    
     function log(msg) { document.getElementById('display').innerText = msg; }
+
+    function formatIp(num) {
+        return [(num >>> 24) & 0xFF, (num >>> 16) & 0xFF, (num >>> 8) & 0xFF, num & 0xFF].join('.');
+    }
+
+    function getIpInt(ip) {
+        return ip.split('.').reduce((acc, octet) => (acc << 8) + parseInt(octet, 10), 0) >>> 0;
+    }
 
     function analizar() {
         const mask = parseInt(document.getElementById('mask').value);
-        const hosts = Math.pow(2, 32 - mask) - 2;
-        log(`Red: /${mask}\nTotal IPs: ${Math.pow(2, 32-mask)}\nHosts: ${hosts > 0 ? hosts : 0}`);
+        const totalIps = Math.pow(2, 32 - mask);
+        const hosts = totalIps - 2;
+        log(`Red: /${mask}\nTotal IPs: ${totalIps}\nHosts utilizables: ${hosts > 0 ? hosts : 0}`);
     }
 
     function subnetFijo() {
         const subs = parseInt(document.getElementById('subs').value);
         const mask = parseInt(document.getElementById('mask').value);
         const bits = Math.ceil(Math.log2(subs));
-        log(`Bits tomados: ${bits}\nNueva Máscara: /${mask + bits}`);
+        log(`Bits prestados: ${bits}\nNueva Máscara: /${mask + bits}\nSubredes creadas: ${Math.pow(2, bits)}`);
     }
 
     function calcularVLSM() {
+        const ipBaseStr = document.getElementById('ip').value;
         const input = document.getElementById('vlsmList').value;
-        const reqs = input.split(',').map(n => parseInt(n.trim())).sort((a,b) => b-a);
-        let out = "VLSM Results:\n";
+        const reqs = input.split(',').map(n => parseInt(n.trim())).filter(n => !isNaN(n)).sort((a,b) => b-a);
+        
+        let currentIp = getIpInt(ipBaseStr);
+        let out = "RESULTADOS VLSM:\n\n";
+
         reqs.forEach(r => {
             let n = 0; while(Math.pow(2, n) - 2 < r) n++;
-            out += `${r} hosts -> /${32 - n}\n`;
+            let totalIps = Math.pow(2, n);
+            let mask = 32 - n;
+            
+            let net = currentIp;
+            let firstHost = net + 1;
+            let lastHost = net + totalIps - 2;
+            let broadcast = net + totalIps - 1;
+
+            out += `Req: ${r} hosts (/${mask})\n`;
+            out += `Red: ${formatIp(net)}\n`;
+            out += `Rango: ${formatIp(firstHost)} - ${formatIp(lastHost)}\n`;
+            out += `BC: ${formatIp(broadcast)}\n\n`;
+            
+            currentIp += totalIps;
         });
         log(out);
     }
